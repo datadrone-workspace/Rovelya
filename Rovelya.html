@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurelle — Fine Jewelry, Understood in Real Time</title>
+<!--
+  ============================================================
+  AURELLE — TWILIO SEGMENT CDP DEMO (Jewelry vertical)
+  Adapted from the Marney (beauty) CDP Demo Playbook.
+  One shopper, one profile, one funnel:
+    UC1 Identity Resolution      -> anonymous browsing becomes a known profile
+    UC2 Shopping-Intent Detection -> behavior becomes a live Engage audience
+    UC3 Homepage Personalization  -> storefront reads the segment and adapts
+
+  Demo persona (performs the same role "Aditi" plays in the beauty playbook):
+    Meera Rao — 29, Bengaluru, mobile-first, evening browser.
+    Browses anonymously as a guest, views 3+ Bridal & Wedding pieces,
+    then signs up as meera.rao@gmail.com. Segment/Unify stitches the
+    anonymous session to her profile; her repeated Bridal views qualify
+    her for "Bridal Intent Audience"; her homepage transforms to the
+    Bridal Edit. A control shopper (no repeated views) sees the default
+    homepage for contrast.
+
+  BEFORE USING THIS FILE:
+    1. Create a Segment Web (JavaScript) source named "Aurelle Web".
+    2. Replace SEGMENT_WRITE_KEY below with that source's real Write Key.
+    3. Freeze a tracking plan for the "Aurelle " prefixed events below.
+    4. Build the Engage computed trait + audiences described in the
+       SEGMENT_DEFS block (client-side here is a stand-in for what Engage
+       computes server-side — it exists so the personalization payoff is
+       visible instantly in a live demo).
+  ============================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#B4884A;
+  --gold-hover:#8F6A34;
+  --champagne:#F1E6CC;
+  --bg:#FFFFFF;
+  --bg-alt:#FAF7F0;
+  --text:#1E1B17;
+  --text2:#7C7364;
+  --border:#E7DFCB;
+  --success:#22C55E;
+  --warning:#F59E0B;
+  --error:#C0392B;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{font-family:'Inter',sans-serif; color:var(--text); background:var(--bg); -webkit-font-smoothing:antialiased;}
+a{color:inherit; text-decoration:none;}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit; font-size:14px;}
+.logo{font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; color:var(--gold-hover); font-size:28px; letter-spacing:0.5px; cursor:pointer;}
+
+/* ===== Header ===== */
+header{display:flex; align-items:center; justify-content:space-between; padding:18px 40px; border-bottom:1px solid var(--border); position:sticky; top:0; background:#fff; z-index:50; gap:16px;}
+nav{display:flex; gap:32px; font-size:14px; font-weight:500; color:var(--text2);}
+nav a{cursor:pointer;}
+nav a:hover{color:var(--gold-hover);}
+nav a.active{color:var(--gold-hover);}
+.nav-actions{display:flex; align-items:center; gap:14px;}
+.pill-btn{border:1px solid var(--border); padding:8px 16px; border-radius:999px; font-size:13px; font-weight:500; cursor:pointer; background:#fff;}
+.pill-btn.primary{background:var(--gold); color:#fff; border-color:var(--gold);}
+.pill-btn.primary:hover{background:var(--gold-hover);}
+.icon-btn{position:relative; border:1px solid var(--border); background:#fff; border-radius:999px; padding:8px 14px; font-size:13px; cursor:pointer; font-weight:500;}
+.cart-count{position:absolute; top:-6px; right:-6px; background:var(--gold); color:#fff; font-size:10px; font-weight:700; border-radius:999px; min-width:18px; height:18px; display:flex; align-items:center; justify-content:center; padding:0 4px;}
+.greet{font-size:13px; color:var(--text2);}
+.greet b{color:var(--text);}
+.search-box{display:flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:999px; padding:6px 14px; flex:1; max-width:340px; background:var(--bg-alt);}
+.search-box input{border:none; outline:none; background:transparent; flex:1; font-size:13px;}
+.search-box button{border:none; background:transparent; cursor:pointer; color:var(--gold-hover); font-weight:600; font-size:13px;}
+
+/* ===== Layout ===== */
+.page{display:none;}
+.page.active{display:block;}
+.container{max-width:1280px; margin:0 auto; padding:0 40px;}
+@media(max-width:768px){.container{padding:0 18px;} header{padding:14px 18px; flex-wrap:wrap; gap:10px;} nav{display:none;} .search-box{order:5; max-width:100%; width:100%;}}
+
+/* ===== Hero ===== */
+.hero{padding:64px 40px 48px; display:flex; align-items:center; gap:48px; background:linear-gradient(135deg,var(--champagne) 0%, #fff 60%);}
+@media(max-width:768px){.hero{flex-direction:column; padding:36px 18px;}}
+.hero-text{flex:1;}
+.eyebrow{font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold-hover); font-weight:600; margin-bottom:14px;}
+.hero h1{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:52px; line-height:1.1; font-weight:600; margin-bottom:18px;}
+@media(max-width:768px){.hero h1{font-size:34px;}}
+.hero p{color:var(--text2); font-size:16px; max-width:440px; margin-bottom:26px;}
+.hero-visual{flex:1; display:flex; justify-content:center;}
+.hero-card{width:300px; height:340px; border-radius:24px; background:linear-gradient(160deg,var(--gold),#e6c688); position:relative; box-shadow:0 30px 60px -20px rgba(180,136,74,0.45);}
+.hero-card::before{content:''; position:absolute; inset:18px; border:1px solid rgba(255,255,255,0.45); border-radius:16px;}
+.hero-card::after{content:'A'; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:140px; color:rgba(255,255,255,0.25); position:absolute; bottom:10px; right:24px;}
+
+/* ===== Shopping Intent Selector ===== */
+.intent-bar{display:flex; gap:10px; flex-wrap:wrap; padding:18px 40px; background:#fff; border-bottom:1px solid var(--border);}
+@media(max-width:768px){.intent-bar{padding:14px 18px;}}
+.intent-chip{border:1px solid var(--border); padding:8px 16px; border-radius:999px; font-size:13px; font-weight:500; cursor:pointer; background:#fff; color:var(--text2);}
+.intent-chip.active{background:var(--gold); color:#fff; border-color:var(--gold);}
+.intent-chip:hover{border-color:var(--gold);}
+
+/* ===== Sections ===== */
+.section{padding:48px 40px;}
+@media(max-width:768px){.section{padding:32px 18px;}}
+.section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:24px;}
+.section-head h2{font-size:22px; font-weight:600;}
+.section-head h2::before{content:'◆ '; color:var(--gold); font-size:12px; vertical-align:middle;}
+.section.alt{background:var(--bg-alt);}
+
+.product-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:22px;}
+@media(max-width:1024px){.product-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:768px){.product-grid{grid-template-columns:repeat(2,1fr); gap:14px;}}
+.product-card{border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .15s, box-shadow .15s; background:#fff; position:relative;}
+.product-card:hover{transform:translateY(-4px); box-shadow:0 16px 30px -16px rgba(180,136,74,0.35); border-color:var(--gold);}
+.product-img{height:220px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; background:#fff; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:26px; color:#fff;}
+.product-img img{width:100%; height:100%; object-fit:contain; object-position:center; display:block;}
+.wishlist-btn{position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.9); border:none; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; z-index:5; transition:transform .1s;}
+.wishlist-btn:hover{transform:scale(1.12);}
+.wishlist-btn.active{color:var(--gold-hover);}
+.product-info{padding:14px 16px;}
+.product-info .cat{font-size:11px; color:var(--gold-hover); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;}
+.product-info .name{font-size:14px; font-weight:600; margin:4px 0 6px;}
+.product-info .price{font-size:13px; color:var(--text2);}
+.product-info .meta{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+.tag{font-size:10px; background:var(--champagne); color:var(--gold-hover); padding:3px 8px; border-radius:999px; font-weight:600;}
+.rating-line{font-size:11px; color:var(--text2); margin-top:6px;}
+.rating-line .stars{color:#F59E0B; letter-spacing:1px;}
+.add-cart-btn{width:100%; margin-top:10px; padding:8px; border-radius:999px; border:1px solid var(--gold); background:#fff; color:var(--gold-hover); font-size:12px; font-weight:600; cursor:pointer; transition:background .15s, color .15s;}
+.add-cart-btn:hover{background:var(--champagne);}
+.add-cart-btn.added{background:var(--success); border-color:var(--success); color:#fff;}
+
+/* ===== PLP layout w/ filters ===== */
+.plp-layout{display:grid; grid-template-columns:240px 1fr; gap:28px;}
+@media(max-width:900px){.plp-layout{grid-template-columns:1fr;}}
+.filters-panel{border:1px solid var(--border); border-radius:16px; padding:20px; align-self:start; position:sticky; top:90px;}
+@media(max-width:900px){.filters-panel{position:static;}}
+.filter-group{margin-bottom:20px;}
+.filter-group:last-child{margin-bottom:0;}
+.filter-group h4{font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text2); font-weight:700; margin-bottom:10px;}
+.filter-opt{display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;}
+.filter-opt input{cursor:pointer;}
+.swatch-row{display:flex; flex-wrap:wrap; gap:8px;}
+.swatch{width:24px; height:24px; border-radius:50%; cursor:pointer; border:2px solid transparent; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1);}
+.swatch.selected{border-color:var(--gold);}
+.price-range-row{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2);}
+.price-range-row input[type=range]{flex:1;}
+.clear-filters{font-size:12px; color:var(--gold-hover); font-weight:600; cursor:pointer; margin-top:6px; display:inline-block;}
+.active-filter-chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.fchip{font-size:12px; background:var(--champagne); color:var(--gold-hover); padding:5px 12px; border-radius:999px; font-weight:600; display:flex; align-items:center; gap:6px;}
+.fchip span{cursor:pointer; font-weight:700;}
+
+/* ===== Product Detail ===== */
+.pd-wrap{display:flex; gap:48px; padding:48px 40px;}
+@media(max-width:768px){.pd-wrap{flex-direction:column; padding:24px 18px; gap:24px;}}
+.pd-img{flex:1; height:420px; border-radius:20px; display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:48px; color:#fff; position:relative; overflow:hidden;}
+.pd-img img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
+.pd-info{flex:1;}
+.pd-info .cat{font-size:12px; color:var(--gold-hover); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;}
+.pd-info h1{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:36px; margin:8px 0 14px;}
+.pd-price{font-size:22px; font-weight:700; margin-bottom:10px;}
+.pd-rating{font-size:13px; color:var(--text2); margin-bottom:18px; display:flex; align-items:center; gap:8px;}
+.pd-rating .stars{color:#F59E0B; letter-spacing:1px;}
+.pd-desc{color:var(--text2); font-size:14px; line-height:1.7; margin-bottom:14px;}
+.pd-meta-row{display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--text2); margin-bottom:20px;}
+.pd-meta-row b{color:var(--text);}
+.qty-row{display:flex; align-items:center; gap:14px; margin-bottom:22px;}
+.qty-box{display:flex; align-items:center; border:1px solid var(--border); border-radius:999px; overflow:hidden;}
+.qty-box button{padding:8px 14px; background:#fff; border:none; cursor:pointer; font-size:15px;}
+.qty-box span{padding:0 14px; font-weight:600;}
+.pd-actions{display:flex; gap:12px; flex-wrap:wrap;}
+.btn-lg{padding:13px 28px; border-radius:999px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid var(--gold);}
+.btn-lg.outline{background:#fff; color:var(--gold-hover);}
+.btn-lg.solid{background:var(--gold); color:#fff;}
+.btn-lg.solid:hover{background:var(--gold-hover);}
+.btn-lg.outline:hover{background:var(--champagne);}
+.btn-wishlist{padding:13px 18px; border-radius:999px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:#fff;}
+.btn-wishlist.active{color:var(--gold-hover); border-color:var(--gold);}
+.added-toast{display:none; margin-top:14px; font-size:13px; color:var(--success); font-weight:600;}
+
+/* ===== Reviews ===== */
+.reviews-section{margin-top:34px; border-top:1px solid var(--border); padding-top:24px;}
+.review-card{border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px;}
+.review-card .rc-head{display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:4px;}
+.review-card .rc-stars{color:#F59E0B; font-size:13px;}
+.review-card .rc-text{font-size:13px; color:var(--text2); line-height:1.5;}
+.review-card .rc-date{font-size:11px; color:var(--text2);}
+.no-reviews{font-size:13px; color:var(--text2);}
+
+/* ===== Cart ===== */
+.cart-item{display:flex; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid var(--border);}
+.cart-thumb{width:64px; height:64px; border-radius:12px; flex:none; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:18px; position:relative; overflow:hidden;}
+.cart-thumb img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
+.cart-item .ci-info{flex:1;}
+.cart-item .ci-name{font-weight:600; font-size:14px;}
+.cart-item .ci-cat{font-size:12px; color:var(--text2);}
+.cart-summary{border:1px solid var(--border); border-radius:16px; padding:22px;}
+.summary-row{display:flex; justify-content:space-between; font-size:14px; margin-bottom:10px; color:var(--text2);}
+.summary-row.total{font-weight:700; color:var(--text); font-size:16px; border-top:1px solid var(--border); padding-top:12px; margin-top:6px;}
+.remove-link{font-size:12px; color:var(--error); cursor:pointer; font-weight:600;}
+.empty-state{text-align:center; padding:60px 20px; color:var(--text2);}
+
+/* ===== Wishlist Page ===== */
+.wishlist-empty{text-align:center; padding:60px 20px; color:var(--text2);}
+
+/* ===== Auth forms ===== */
+.auth-wrap{max-width:420px; margin:60px auto; padding:0 20px;}
+.auth-card{border:1px solid var(--border); border-radius:20px; padding:36px 32px;}
+.auth-card h2{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:30px; margin-bottom:6px;}
+.auth-card p.sub{color:var(--text2); font-size:13px; margin-bottom:24px;}
+.field{margin-bottom:16px;}
+.field label{display:block; font-size:12px; font-weight:600; color:var(--text2); margin-bottom:6px;}
+.field input, .field textarea, .field select{width:100%; padding:11px 14px; border:1px solid var(--border); border-radius:10px; outline:none;}
+.field input:focus, .field textarea:focus{border-color:var(--gold);}
+.auth-switch{text-align:center; font-size:13px; color:var(--text2); margin-top:18px;}
+.auth-switch span{color:var(--gold-hover); cursor:pointer; font-weight:600;}
+.form-error{color:var(--error); font-size:12px; margin-bottom:10px; display:none;}
+
+/* ===== Profile ===== */
+.profile-grid{display:grid; grid-template-columns:1fr 1.3fr; gap:24px;}
+@media(max-width:1024px){.profile-grid{grid-template-columns:1fr;}}
+.card{border:1px solid var(--border); border-radius:16px; padding:22px; background:#fff;}
+.card h3{font-size:14px; font-weight:600; margin-bottom:14px;}
+.avatar-circle{width:72px; height:72px; border-radius:50%; background:var(--champagne); color:var(--gold-hover); display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:28px; margin-bottom:14px;}
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr;}}
+.order-card{border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px;}
+.order-card:last-child{margin-bottom:0;}
+.order-card .oc-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+.order-card .oc-id{font-weight:700; font-size:13px;}
+.order-card .oc-date{font-size:11px; color:var(--text2);}
+.order-card .oc-item{display:flex; justify-content:space-between; font-size:12px; color:var(--text2); padding:3px 0;}
+.order-card .oc-total{display:flex; justify-content:space-between; font-weight:700; font-size:13px; border-top:1px solid var(--border); margin-top:8px; padding-top:8px;}
+.review-prompt{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);}
+.review-prompt .rp-item{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;}
+.star-input{display:flex; gap:4px; font-size:18px; cursor:pointer;}
+.star-input span{color:var(--border);}
+.star-input span.filled{color:#F59E0B;}
+.review-mini-btn{font-size:11px; padding:5px 10px; border-radius:999px; border:1px solid var(--gold); background:#fff; color:var(--gold-hover); cursor:pointer; font-weight:600;}
+.review-mini-btn.done{border-color:var(--success); color:var(--success); cursor:default;}
+.review-form-box{display:none; margin-top:10px; border:1px solid var(--border); border-radius:10px; padding:12px;}
+.review-form-box textarea{width:100%; border:1px solid var(--border); border-radius:8px; padding:8px; margin-top:8px; outline:none; font-size:12px;}
+
+/* ===== Order Confirmation ===== */
+.confirm-wrap{max-width:520px; margin:70px auto; padding:0 20px; text-align:center;}
+.confirm-check{width:64px; height:64px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 20px;}
+.confirm-wrap h2{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:30px; margin-bottom:10px;}
+.confirm-wrap p{color:var(--text2); font-size:14px; margin-bottom:24px;}
+.confirm-card{border:1px solid var(--border); border-radius:16px; padding:20px; text-align:left; margin-bottom:24px;}
+.confirm-actions{display:flex; gap:12px; justify-content:center; flex-wrap:wrap;}
+
+footer{padding:40px; border-top:1px solid var(--border); text-align:center; color:var(--text2); font-size:12px;}
+.footer-links{display:flex; gap:18px; justify-content:center; margin-top:10px; flex-wrap:wrap;}
+.footer-links a{font-size:12px; color:var(--text2); text-decoration:underline; cursor:pointer;}
+.footer-links a:hover{color:var(--gold-hover);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="goPage('home')">Aurelle</div>
+  <nav>
+    <a id="nav-home" onclick="goPage('home')">Home</a>
+    <a id="nav-plp" onclick="goPage('plp')">Shop</a>
+    <a id="nav-profile" onclick="goPage('profile')">Profile</a>
+  </nav>
+  <div class="search-box">
+    <input id="searchInput" type="text" placeholder="Search rings, necklaces, earrings..." onkeydown="if(event.key==='Enter'){runSearch();}">
+    <button onclick="runSearch()">Search</button>
+  </div>
+  <div class="nav-actions">
+    <span class="greet" id="greetText" style="display:none;"></span>
+    <button class="pill-btn" id="loginBtn" onclick="goPage('login')">Login / Sign Up</button>
+    <button class="pill-btn" id="signoutBtn" style="display:none;" onclick="signOut()">Sign Out</button>
+    <button class="icon-btn" onclick="goPage('wishlist')">♡ <span class="cart-count" id="wishlistCount" style="display:none;">0</span></button>
+    <button class="icon-btn" onclick="goPage('cart')">Cart <span class="cart-count" id="cartCount" style="display:none;">0</span></button>
+  </div>
+</header>
+
+<!-- ============ SHOPPING INTENT BAR ============ -->
+<div class="intent-bar" id="intentBar">
+  <span style="font-size:13px; color:var(--text2); align-self:center; margin-right:6px;">Shopping for:</span>
+</div>
+
+<!-- ============ HOME ============ -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <div class="hero-text">
+      <div class="eyebrow" id="heroEyebrow">Personalized For You</div>
+      <h1 id="heroHeadline">Fine jewelry, understood in real time.</h1>
+      <p id="heroSub">Aurelle curates pieces that fit how you actually shop.</p>
+      <button class="pill-btn primary" onclick="goPage('plp')">Shop the edit</button>
+    </div>
+    <div class="hero-visual"><div class="hero-card"></div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2 id="featuredTitle">Featured For You</h2></div>
+    <div class="product-grid" id="featuredGrid"></div>
+  </div>
+
+  <div class="section alt" id="recommendedSection" style="display:none;">
+    <div class="section-head"><h2 id="recommendedTitle">Recommended For You</h2></div>
+    <div class="product-grid" id="recommendedGrid"></div>
+  </div>
+
+  <div class="section alt">
+    <div class="section-head"><h2>Trending Now</h2></div>
+    <div class="product-grid" id="trendingGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Recently Viewed</h2></div>
+    <div class="product-grid" id="recentGrid"></div>
+    <p style="color:var(--text2); font-size:13px; margin-top:10px;" id="recentEmpty">Browse a few pieces and they'll appear here.</p>
+  </div>
+</div>
+
+<!-- ============ PLP ============ -->
+<div class="page" id="page-plp">
+  <div class="section">
+    <div class="section-head"><h2 id="plpTitle">Shop All</h2></div>
+    <div class="plp-layout">
+      <div class="filters-panel">
+        <div class="filter-group">
+          <h4>Category</h4>
+          <div id="filterCategory"></div>
+        </div>
+        <div class="filter-group">
+          <h4>Metal</h4>
+          <div id="filterMetal"></div>
+        </div>
+        <div class="filter-group">
+          <h4>Brand</h4>
+          <div id="filterBrand"></div>
+        </div>
+        <div class="filter-group">
+          <h4>Tone</h4>
+          <div class="swatch-row" id="filterColor"></div>
+        </div>
+        <div class="filter-group">
+          <h4>Price Range</h4>
+          <div class="price-range-row">
+            <span>$0</span>
+            <input type="range" id="filterPrice" min="0" max="7000" step="50" value="7000" oninput="onPriceFilterChange()">
+            <span id="filterPriceLabel">$7,000+</span>
+          </div>
+        </div>
+        <span class="clear-filters" onclick="clearAllFilters()">Clear all filters</span>
+      </div>
+      <div>
+        <div class="active-filter-chips" id="activeFilterChips"></div>
+        <p id="plpEmpty" style="display:none; color:var(--text2); font-size:14px; margin-bottom:16px;">No pieces matched your search.</p>
+        <div class="product-grid" id="plpGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRODUCT DETAIL ============ -->
+<div class="page" id="page-product">
+  <div class="pd-wrap">
+    <div class="pd-img" id="pdImg"></div>
+    <div class="pd-info">
+      <div class="cat" id="pdCat"></div>
+      <h1 id="pdName"></h1>
+      <div class="pd-price" id="pdPrice"></div>
+      <div class="pd-rating" id="pdRating"></div>
+      <p class="pd-desc" id="pdDesc"></p>
+      <div class="pd-meta-row">
+        <span><b id="pdBrand"></b> line</span>
+        <span>Metal: <b id="pdMetal"></b></span>
+        <span>Shopping for: <b id="pdIntent"></b></span>
+        <span>Tone: <b id="pdColor"></b></span>
+      </div>
+      <div class="qty-row">
+        <span style="font-size:13px; font-weight:600;">Quantity</span>
+        <div class="qty-box">
+          <button onclick="changeQty(-1)">−</button>
+          <span id="pdQty">1</span>
+          <button onclick="changeQty(1)">+</button>
+        </div>
+      </div>
+      <div class="pd-actions">
+        <button class="btn-lg outline" onclick="addToCart()">Add to Cart</button>
+        <button class="btn-lg solid" onclick="buyNow()">Buy Now</button>
+        <button class="btn-wishlist" id="pdWishlistBtn" onclick="toggleWishlistCurrent()">♡ Wishlist</button>
+      </div>
+      <div class="added-toast" id="addedToast">Added to your cart.</div>
+
+      <div class="reviews-section">
+        <h3 style="font-size:15px; margin-bottom:12px;">Customer Reviews</h3>
+        <div id="pdReviews"></div>
+      </div>
+    </div>
+  </div>
+  <div class="section alt">
+    <div class="section-head"><h2>You May Also Like</h2></div>
+    <div class="product-grid" id="similarGrid"></div>
+  </div>
+</div>
+
+<!-- ============ WISHLIST ============ -->
+<div class="page" id="page-wishlist">
+  <div class="section">
+    <div class="section-head"><h2>My Wishlist</h2></div>
+    <div class="product-grid" id="wishlistGrid"></div>
+    <div class="wishlist-empty" id="wishlistEmpty" style="display:none;">
+      <p>Your wishlist is empty.</p>
+      <button class="pill-btn primary" style="margin-top:14px;" onclick="goPage('plp')">Browse Pieces</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CART ============ -->
+<div class="page" id="page-cart">
+  <div class="section">
+    <div class="section-head"><h2>Your Cart</h2></div>
+    <div class="dash-grid" id="cartLayout" style="display:grid; grid-template-columns:2fr 1fr; gap:24px;">
+      <div>
+        <div id="cartItems"></div>
+        <div class="empty-state" id="cartEmpty" style="display:none;">
+          <p>Your cart is empty.</p>
+          <button class="pill-btn primary" style="margin-top:14px;" onclick="goPage('plp')">Continue Shopping</button>
+        </div>
+      </div>
+      <div class="cart-summary" id="cartSummaryBox">
+        <div class="summary-row"><span>Subtotal</span><span id="cartSubtotal">$0.00</span></div>
+        <div class="summary-row"><span>Shipping</span><span id="cartShipping">$0.00</span></div>
+        <div class="summary-row total"><span>Total</span><span id="cartTotal">$0.00</span></div>
+        <button class="pill-btn primary" style="width:100%; margin-top:16px; padding:12px;" onclick="goToCheckout()">Checkout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOGIN / SIGNUP ============ -->
+<div class="page" id="page-login">
+  <div class="auth-wrap">
+    <div class="auth-card" id="loginCard">
+      <h2>Welcome back</h2>
+      <p class="sub">Log in to view your profile and order history.</p>
+      <div class="form-error" id="loginError"></div>
+      <div class="field"><label>Email</label><input id="loginEmail" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••"></div>
+      <button class="pill-btn primary" style="width:100%; padding:12px;" onclick="doLogin()">Log In</button>
+      <div class="auth-switch">New to Aurelle? <span onclick="goPage('signup')">Create an account</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-signup">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Create your account</h2>
+      <p class="sub">Join Aurelle for personalized recommendations and order tracking.</p>
+      <div class="form-error" id="signupError"></div>
+      <div class="field"><label>Full Name</label><input id="signupName" placeholder="Jane Doe"></div>
+      <div class="field"><label>Email</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="signupPassword" type="password" placeholder="••••••••"></div>
+      <button class="pill-btn primary" style="width:100%; padding:12px;" onclick="doSignup()">Create Account</button>
+      <div class="auth-switch">Already have an account? <span onclick="goPage('login')">Log in</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PROFILE ============ -->
+<div class="page" id="page-profile">
+  <div class="section">
+    <div class="section-head"><h2>My Account</h2></div>
+    <div id="profileLoggedOut" style="display:none;" class="empty-state">
+      <p>Log in to view and manage your profile.</p>
+      <button class="pill-btn primary" style="margin-top:14px;" onclick="goPage('login')">Login / Sign Up</button>
+    </div>
+    <div id="profileLoggedIn">
+      <div class="profile-grid">
+        <div class="card">
+          <div class="avatar-circle" id="avatarInitial">A</div>
+          <h3 style="font-size:18px;" id="profileNameDisplay">—</h3>
+          <p style="font-size:13px; color:var(--text2); margin-bottom:4px;" id="profileEmailDisplay"></p>
+          <p style="font-size:13px; color:var(--text2);" id="profilePhoneDisplay"></p>
+          <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+          <h3>My Orders</h3>
+          <div id="orderHistory"><p style="font-size:13px; color:var(--text2);">No orders yet.</p></div>
+        </div>
+        <div class="card">
+          <h3>Personal Details</h3>
+          <div class="form-grid">
+            <div class="field"><label>Full Name</label><input id="pfName"></div>
+            <div class="field"><label>Email</label><input id="pfEmail"></div>
+            <div class="field"><label>Phone Number</label><input id="pfPhone" placeholder="+91 00000 00000"></div>
+            <div class="field"><label>Date of Birth</label><input id="pfDob" type="date"></div>
+          </div>
+          <h3 style="margin-top:8px;">Shipping Address</h3>
+          <div class="form-grid">
+            <div class="field" style="grid-column:1 / -1;"><label>Address Line</label><input id="pfAddress" placeholder="123 Residency Road"></div>
+            <div class="field"><label>City</label><input id="pfCity"></div>
+            <div class="field"><label>State</label><input id="pfState"></div>
+            <div class="field"><label>ZIP / Postal Code</label><input id="pfZip"></div>
+            <div class="field"><label>Country</label><input id="pfCountry"></div>
+          </div>
+          <h3 style="margin-top:8px;">Preferences</h3>
+          <div class="form-grid">
+            <div class="field"><label>Preferred Metal</label>
+              <select id="pfMetal">
+                <option>18K Gold</option><option>22K Gold</option><option>Rose Gold</option><option>Platinum</option><option>Sterling Silver</option>
+              </select>
+            </div>
+            <div class="field"><label>Preferred Currency</label>
+              <select id="pfCurrency"><option>USD</option><option>EUR</option><option>GBP</option><option>INR</option></select>
+            </div>
+          </div>
+          <button class="pill-btn primary" onclick="saveProfile()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHECKOUT ============ -->
+<div class="page" id="page-checkout">
+  <div class="section">
+    <div class="section-head"><h2>Checkout</h2></div>
+    <div class="plp-layout" style="grid-template-columns:1.4fr 1fr;">
+      <div>
+        <div class="card" id="checkoutAddressCard">
+          <h3>Confirm Delivery Address &amp; Mobile Number</h3>
+          <div class="form-grid">
+            <div class="field" style="grid-column:1 / -1;"><label>Full Name</label><input id="coName"></div>
+            <div class="field" style="grid-column:1 / -1;"><label>Mobile Number</label><input id="coPhone" placeholder="+91 00000 00000"></div>
+            <div class="field" style="grid-column:1 / -1;"><label>Address Line</label><input id="coAddress" placeholder="123 Residency Road"></div>
+            <div class="field"><label>City</label><input id="coCity"></div>
+            <div class="field"><label>State</label><input id="coState"></div>
+            <div class="field"><label>ZIP / Postal Code</label><input id="coZip"></div>
+            <div class="field"><label>Country</label><input id="coCountry"></div>
+          </div>
+          <div class="form-error" id="checkoutAddrError"></div>
+          <button class="pill-btn primary" onclick="confirmCheckoutAddress()">Continue to Payment</button>
+        </div>
+
+        <div class="card" id="checkoutPaymentCard" style="display:none; margin-top:20px;">
+          <h3>Select Payment Method</h3>
+          <div class="form-error" id="checkoutPayError"></div>
+          <label class="filter-opt" style="font-size:14px; padding:10px; border:1px solid var(--border); border-radius:10px; margin-bottom:10px;">
+            <input type="radio" name="paymentMethod" value="GPay" onchange="selectPaymentMethod('GPay')"> Google Pay (GPay)
+          </label>
+          <label class="filter-opt" style="font-size:14px; padding:10px; border:1px solid var(--border); border-radius:10px; margin-bottom:10px;">
+            <input type="radio" name="paymentMethod" value="Net Banking" onchange="selectPaymentMethod('Net Banking')"> Net Banking
+          </label>
+          <label class="filter-opt" style="font-size:14px; padding:10px; border:1px solid var(--border); border-radius:10px; margin-bottom:10px;">
+            <input type="radio" name="paymentMethod" value="Cash on Delivery" onchange="selectPaymentMethod('Cash on Delivery')"> Cash on Delivery
+          </label>
+          <div style="display:flex; gap:12px; margin-top:10px;">
+            <button class="pill-btn" onclick="backToAddressStep()">Back</button>
+            <button class="pill-btn primary" onclick="placeOrder()">Place Order</button>
+          </div>
+        </div>
+      </div>
+      <div class="cart-summary">
+        <h3 style="margin-bottom:14px;">Order Summary</h3>
+        <div id="checkoutItemsList"></div>
+        <div class="summary-row" style="margin-top:10px;"><span>Subtotal</span><span id="coSubtotal">$0.00</span></div>
+        <div class="summary-row"><span>Shipping</span><span id="coShipping">$0.00</span></div>
+        <div class="summary-row total"><span>Total</span><span id="coTotal">$0.00</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ORDER CONFIRMATION ============ -->
+<div class="page" id="page-orderconfirm">
+  <div class="confirm-wrap">
+    <div class="confirm-check">✓</div>
+    <h2>Order placed!</h2>
+    <p>Thank you for shopping with Aurelle. A confirmation has been recorded to your account. Please leave a review from your order history once your piece has arrived.</p>
+    <div class="confirm-card" id="confirmCard"></div>
+    <div class="confirm-actions">
+      <button class="pill-btn primary" onclick="goPage('profile')">View My Orders &amp; Leave a Review</button>
+      <button class="pill-btn" onclick="goPage('plp')">Continue Shopping</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Aurelle — fine jewelry, curated for you.</p>
+  <div style="margin-top:18px;">
+    <a
+      id="supportLink"
+      href="mailto:support@aurelle.com?subject=Aurelle%20Support%20Request"
+      class="pill-btn primary"
+      style="display:inline-block; text-decoration:none;"
+      onclick="logEvent('contact_support_clicked', 'Contact Support clicked', {email: state.user ? state.user.email : null})"
+    >
+      Contact Support
+    </a>
+  </div>
+</footer>
+
+<script>
+/* ===================== SEGMENT BRIDGE ===================== */
+function sg(){ return (typeof analytics !== 'undefined') ? analytics : null; }
+/* prefix every event name with "Aurelle " so they don't collide with
+   other projects/teams reusing generic event names in the same Segment workspace */
+function sgTrack(event, props){
+  const a = sg();
+  const prefixedEvent = 'Aurelle ' + event;
+  if(a && a.track){ try{ a.track(prefixedEvent, Object.assign({}, props||{}, {sessionId: state.sessionId})); }catch(e){ console.warn('analytics.track failed', e); } }
+}
+function sgIdentify(userId, traits){
+  const a = sg();
+  if(a && a.identify){ try{ a.identify(userId, traits||{}); }catch(e){ console.warn('analytics.identify failed', e); } }
+}
+function sgPage(name, props){
+  const a = sg();
+  if(a && a.page){ try{ a.page(name, props||{}); }catch(e){ console.warn('analytics.page failed', e); } }
+}
+
+/* ===================== DATA ===================== */
+/* ============================================================
+   HOW TO ADD YOUR PRODUCT IMAGES
+   ------------------------------------------------------------
+   Every product below has an  img: ''  field.
+   Paste your image URL between the quotes, for example:
+       img: 'https://yourdomain.com/images/solitaire-ring.jpg'
+   Leave it as  img: ''  (empty) for any product you don't have
+   an image for yet — it will keep showing the colored placeholder.
+   ============================================================ */
+const PRODUCTS = [
+  /* ---------- Bridal & Wedding (intent: bridal) ---------- */
+  {id:'j1', img:'', name:'Solitaire Engagement Ring', cat:'Ring', category:'rings', intent:'bridal', metal:'Platinum', price:1899, color:'#B4884A', colorName:'Platinum-Tone', brand:'Aurelle Bridal', desc:'A timeless round-brilliant solitaire set in platinum, designed to catch light from every angle.'},
+  {id:'j2', img:'', name:'Vintage Halo Engagement Ring', cat:'Ring', category:'rings', intent:'bridal', metal:'18K Gold', price:1650, color:'#C9A227', colorName:'Gold', brand:'Aurelle Bridal', desc:'A milgrain halo setting inspired by Art Deco detailing, framing a brilliant-cut center stone.'},
+  {id:'j3', img:'', name:'Diamond Eternity Wedding Band', cat:'Ring', category:'rings', intent:'bridal', metal:'Platinum', price:980, color:'#B4884A', colorName:'Platinum-Tone', brand:'Aurelle Bridal', desc:'A continuous line of pave diamonds in platinum, made to sit flush against an engagement ring.'},
+  {id:'j4', img:'', name:'Bridal Choker Necklace Set', cat:'Necklace', category:'necklaces', intent:'bridal', metal:'22K Gold', price:2400, color:'#D4AF37', colorName:'Antique Gold', brand:'Aurelle Bridal', desc:'A layered choker and long-chain set handcrafted for the mandap, with matching earrings included.'},
+  {id:'j5', img:'', name:'Kundan Bridal Necklace', cat:'Necklace', category:'necklaces', intent:'bridal', metal:'22K Gold', price:2100, color:'#D4AF37', colorName:'Antique Gold', brand:'Aurelle Bridal', desc:'Traditional kundan stone-setting on 22K gold, finished with a meenakari reverse.'},
+  {id:'j6', img:'', name:'Temple Bridal Jhumka Earrings', cat:'Earrings', category:'earrings', intent:'bridal', metal:'22K Gold', price:780, color:'#D4AF37', colorName:'Antique Gold', brand:'Aurelle Bridal', desc:'Temple-motif jhumkas with a gentle bell drop, sized for all-day wear through wedding functions.'},
+  {id:'j7', img:'', name:'Bridal Polki Drop Earrings', cat:'Earrings', category:'earrings', intent:'bridal', metal:'22K Gold', price:890, color:'#D4AF37', colorName:'Antique Gold', brand:'Aurelle Bridal', desc:'Uncut polki diamonds set in gold with a pearl drop finish, designed to pair with the bridal choker.'},
+  {id:'j8', img:'', name:'Gold Mangalsutra', cat:'Necklace', category:'necklaces', intent:'bridal', metal:'22K Gold', price:640, color:'#1E1B17', colorName:'Black Bead', brand:'Aurelle Bridal', desc:'A classic black-bead and gold vati mangalsutra on a durable double chain.'},
+  {id:'j9', img:'', name:'Bridal Kada Bangles (Pair)', cat:'Bangles', category:'bracelets', intent:'bridal', metal:'22K Gold', price:1550, color:'#D4AF37', colorName:'Antique Gold', brand:'Aurelle Bridal', desc:'A hand-engraved pair of kada bangles, weighted for presence without feeling heavy on the wrist.'},
+
+  /* ---------- Everyday Fine Jewelry (intent: everyday) ---------- */
+  {id:'j10', img:'', name:'Dainty Layered Gold Chain', cat:'Necklace', category:'necklaces', intent:'everyday', metal:'18K Gold', price:320, color:'#E6C688', colorName:'Champagne Gold', brand:'Aurelle Daily', desc:'Two fine-link chains at different lengths, made to layer or wear alone under a collar.'},
+  {id:'j11', img:'', name:'Minimalist Stud Earrings', cat:'Earrings', category:'earrings', intent:'everyday', metal:'18K Gold', price:140, color:'#E6C688', colorName:'Champagne Gold', brand:'Aurelle Daily', desc:'A rounded gold stud small enough to sleep in, big enough to catch the light.'},
+  {id:'j12', img:'', name:'Stackable Thin Band Ring', cat:'Ring', category:'rings', intent:'everyday', metal:'18K Gold', price:180, color:'#E6C688', colorName:'Champagne Gold', brand:'Aurelle Daily', desc:'A slim polished band designed to stack with two or three of its own kind.'},
+  {id:'j13', img:'', name:'Everyday Huggie Hoops', cat:'Earrings', category:'earrings', intent:'everyday', metal:'Sterling Silver', price:95, color:'#C7C2B8', colorName:'Silver', brand:'Aurelle Daily', desc:'A close-fitting huggie hoop that hugs the earlobe without pulling.'},
+  {id:'j14', img:'', name:'Slim Bangle Set (3-Pc)', cat:'Bangles', category:'bracelets', intent:'everyday', metal:'18K Gold', price:260, color:'#E6C688', colorName:'Champagne Gold', brand:'Aurelle Daily', desc:'Three narrow bangles designed to be worn together for quiet daily movement and sound.'},
+  {id:'j15', img:'', name:'Delicate Initial Pendant', cat:'Necklace', category:'necklaces', intent:'everyday', metal:'18K Gold', price:150, color:'#E6C688', colorName:'Champagne Gold', brand:'Aurelle Daily', desc:'A single hand-set initial on a fine cable chain, sized to layer with other daily pieces.'},
+  {id:'j16', img:'', name:'Everyday Signet Ring', cat:'Ring', category:'rings', intent:'everyday', metal:'Sterling Silver', price:110, color:'#C7C2B8', colorName:'Silver', brand:'Aurelle Daily', desc:'A blank signet face left unengraved, ready for a monogram or worn plain.'},
+  {id:'j17', img:'', name:'Twist Hoop Earrings', cat:'Earrings', category:'earrings', intent:'everyday', metal:'Rose Gold', price:130, color:'#E3AE95', colorName:'Rose Gold', brand:'Aurelle Daily', desc:'A twisted rope-texture hoop in rose gold, light enough for all-day wear.'},
+  {id:'j18', img:'', name:'Simple Curb Chain Bracelet', cat:'Bracelet', category:'bracelets', intent:'everyday', metal:'Sterling Silver', price:105, color:'#C7C2B8', colorName:'Silver', brand:'Aurelle Daily', desc:'A flat curb-link chain bracelet with a secure lobster clasp, built for daily wear.'},
+
+  /* ---------- Gifting (intent: gifting) ---------- */
+  {id:'j19', img:'', name:'Birthstone Pendant Necklace', cat:'Necklace', category:'necklaces', intent:'gifting', metal:'Rose Gold', price:220, color:'#E3AE95', colorName:'Rose Gold', brand:'Petale Gifts', desc:'A single birthstone set in rose gold on an adjustable chain — comes gift-boxed.'},
+  {id:'j20', img:'', name:'Personalised Name Necklace', cat:'Necklace', category:'necklaces', intent:'gifting', metal:'18K Gold', price:190, color:'#E6C688', colorName:'Champagne Gold', brand:'Petale Gifts', desc:'A custom script name plate on a fine chain, made to order with the name of your choice.'},
+  {id:'j21', img:'', name:'Heart Locket Pendant', cat:'Necklace', category:'necklaces', intent:'gifting', metal:'Rose Gold', price:210, color:'#E3AE95', colorName:'Rose Gold', brand:'Petale Gifts', desc:'A hinged heart locket that opens to hold two small photos, finished in rose gold.'},
+  {id:'j22', img:'', name:'Friendship Charm Bracelet', cat:'Bracelet', category:'bracelets', intent:'gifting', metal:'Sterling Silver', price:85, color:'#C7C2B8', colorName:'Silver', brand:'Petale Gifts', desc:'A simple chain bracelet with one starter charm, designed to grow one gift at a time.'},
+  {id:'j23', img:'', name:'Pearl Drop Gift Earrings', cat:'Earrings', category:'earrings', intent:'gifting', metal:'Rose Gold', price:175, color:'#E3AE95', colorName:'Rose Gold', brand:'Petale Gifts', desc:'A single freshwater pearl drop on a rose gold hook, arriving in a keepsake box.'},
+  {id:'j24', img:'', name:'Anniversary Infinity Ring', cat:'Ring', category:'rings', intent:'gifting', metal:'Rose Gold', price:240, color:'#E3AE95', colorName:'Rose Gold', brand:'Petale Gifts', desc:'An infinity band in rose gold set with a single accent stone, made for milestone anniversaries.'},
+  {id:'j25', img:'', name:'Zodiac Charm Pendant', cat:'Necklace', category:'necklaces', intent:'gifting', metal:'18K Gold', price:165, color:'#E6C688', colorName:'Champagne Gold', brand:'Petale Gifts', desc:'A hand-finished zodiac constellation charm in gold, sized for everyday layering.'},
+
+  /* ---------- Luxury Collection (intent: luxury) ---------- */
+  {id:'j26', img:'', name:'Emerald Statement Necklace', cat:'Necklace', category:'necklaces', intent:'luxury', metal:'Platinum', price:6400, color:'#2E5E4E', colorName:'Emerald', brand:'Belmonde Atelier', desc:'A cascading emerald and diamond collar, hand-set in platinum for a single unmistakable moment.'},
+  {id:'j27', img:'', name:'Ruby Cocktail Ring', cat:'Ring', category:'rings', intent:'luxury', metal:'18K Gold', price:3200, color:'#7B2D3E', colorName:'Ruby', brand:'Belmonde Atelier', desc:'A deep-cut ruby center stone surrounded by a halo of diamonds, set in warm 18K gold.'},
+  {id:'j28', img:'', name:'Diamond Tennis Bracelet', cat:'Bracelet', category:'bracelets', intent:'luxury', metal:'Platinum', price:5800, color:'#B4884A', colorName:'Platinum-Tone', brand:'Belmonde Atelier', desc:'A continuous line of matched round-brilliant diamonds in a secure platinum setting.'},
+  {id:'j29', img:'', name:'Sapphire Drop Earrings', cat:'Earrings', category:'earrings', intent:'luxury', metal:'Platinum', price:2900, color:'#2C4770', colorName:'Sapphire', brand:'Belmonde Atelier', desc:'Ceylon sapphire drops suspended from diamond studs, finished in platinum.'},
+  {id:'j30', img:'', name:'Pearl & Diamond Statement Cuff', cat:'Bracelet', category:'bracelets', intent:'luxury', metal:'18K Gold', price:4100, color:'#C9A227', colorName:'Gold', brand:'Belmonde Atelier', desc:'A sculptural gold cuff inlaid with South Sea pearls and pave diamond accents.'},
+];
+
+const METALS = ['18K Gold','22K Gold','Rose Gold','Platinum','Sterling Silver'];
+const CATEGORIES = ['rings','necklaces','earrings','bracelets'];
+const BRANDS = [...new Set(PRODUCTS.map(p=>p.brand))];
+const COLOR_NAMES = [...new Set(PRODUCTS.map(p=>p.colorName))];
+
+const JEWELRY_INTENTS = [
+  {key:'bridal', label:'Bridal & Wedding'},
+  {key:'everyday', label:'Everyday Fine Jewelry'},
+  {key:'gifting', label:'Gifting'},
+  {key:'luxury', label:'Luxury Collection'},
+];
+
+/* ===================== REVIEWS ===================== */
+let reviewsDb = {};
+PRODUCTS.forEach(p=>reviewsDb[p.id]=[]);
+
+function productRatingSummary(id){
+  const list = reviewsDb[id] || [];
+  if(list.length===0) return {avg:0, count:0};
+  const avg = list.reduce((a,r)=>a+r.rating,0)/list.length;
+  return {avg: Math.round(avg*10)/10, count: list.length};
+}
+function starString(avg){
+  const full = Math.round(avg);
+  return '★★★★★☆☆☆☆☆'.slice(5-full,10-full);
+}
+
+/* ===================== STATE ===================== */
+let state = {
+  user: null,
+  usersDb: {},
+  cart: [],
+  wishlist: [],
+  ordersByUser: {},
+  orders: [],
+  currentProductId: null,
+  pdQty: 1,
+  events: [],
+  views: {bridal:0, everyday:0, gifting:0, luxury:0},
+  recentlyViewed: [],
+  currentSegment: null,
+  currentIntent: null,
+  selectedIntent: null,
+  confidence: 0,
+  homeVariant: 'Default',
+  sessionId: 'sess_' + Math.random().toString(36).slice(2,10),
+  sessionStart: Date.now(),
+  lastActivity: Date.now(),
+  lastOrder: null,
+  filters: {category:new Set(), metal:new Set(), brand:new Set(), color:new Set(), maxPrice:7000},
+};
+
+const SEGMENT_DEFS = {
+  'Bridal Intent Audience': {key:'bridal', min:3},
+  'Everyday Fine Jewelry Shoppers': {key:'everyday', min:3},
+  'Gifting Shoppers': {key:'gifting', min:3},
+  'Luxury Collectors': {key:'luxury', min:2},
+};
+
+/* ===================== TRACKING ===================== */
+function logEvent(type, label, extraProps){
+  state.events.unshift({type, label, ts:new Date()});
+  state.events = state.events.slice(0,60);
+  state.lastActivity = Date.now();
+  sgTrack(type, Object.assign({label: label}, extraProps||{}));
+}
+
+/* ===================== PRODUCT RENDERING ===================== */
+function productImgInner(p){
+  return p.img
+    ? `<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.closest('.product-img,.pd-img,.cart-thumb').classList.add('img-fallback'); this.remove();">`
+    : p.name.split(' ')[0];
+}
+function productCard(p){
+  const r = productRatingSummary(p.id);
+  const ratingHtml = r.count>0
+    ? `<div class="rating-line"><span class="stars">${starString(r.avg)}</span> ${r.avg} (${r.count})</div>`
+    : `<div class="rating-line">No reviews yet</div>`;
+  const inWishlist = state.wishlist.includes(p.id);
+  return `<div class="product-card">
+    <div onclick="openProduct('${p.id}')">
+      <div class="product-img" style="background:${p.color};">
+        ${productImgInner(p)}
+        <button class="wishlist-btn ${inWishlist?'active':''}" onclick="toggleWishlist('${p.id}', event)" title="Wishlist">${inWishlist?'♥':'♡'}</button>
+      </div>
+      <div class="product-info">
+        <div class="cat">${p.cat}</div>
+        <div class="name">${p.name}</div>
+        <div class="meta"><span class="price">$${p.price.toLocaleString()}</span><span class="tag">${p.metal}</span></div>
+        ${ratingHtml}
+      </div>
+    </div>
+    <div style="padding:0 16px 14px;">
+      <button class="add-cart-btn" id="addbtn-${p.id}" onclick="quickAdd('${p.id}', event)">Add to Cart</button>
+    </div>
+  </div>`;
+}
+
+function renderProductGrids(){
+  renderPLPGrid();
+  document.getElementById('trendingGrid').innerHTML = PRODUCTS.slice(6,10).map(productCard).join('');
+  renderFeatured();
+  renderRecent();
+  renderRecommended();
+}
+function renderRecent(){
+  const grid = document.getElementById('recentGrid');
+  const empty = document.getElementById('recentEmpty');
+  if(state.recentlyViewed.length===0){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = state.recentlyViewed.slice(0,4).map(id=>productCard(PRODUCTS.find(p=>p.id===id))).join('');
+}
+function renderRecommended(){
+  const section = document.getElementById('recommendedSection');
+  const grid = document.getElementById('recommendedGrid');
+  const title = document.getElementById('recommendedTitle');
+  const intent = state.selectedIntent;
+  if(!intent){ section.style.display='none'; return; }
+  const def = JEWELRY_INTENTS.find(c=>c.key===intent);
+  const items = PRODUCTS.filter(p=>p.intent===intent).slice(0,8);
+  if(items.length===0){ section.style.display='none'; return; }
+  section.style.display='block';
+  title.textContent = 'Recommended for ' + (def?def.label:intent);
+  grid.innerHTML = items.map(productCard).join('');
+}
+
+function trackView(p){
+  state.recentlyViewed = [p.id, ...state.recentlyViewed.filter(x=>x!==p.id)].slice(0,8);
+  state.views[p.intent] = (state.views[p.intent]||0) + 1;
+  logEvent('product_viewed', p.name, {product_id:p.id, category:p.cat, intent:p.intent, price:p.price});
+  logEvent('category_viewed', p.cat, {category:p.cat, intent:p.intent});
+  evaluateSegments();
+  renderRecent();
+}
+
+function openProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  state.currentProductId = id;
+  state.pdQty = 1;
+  const pdImgEl = document.getElementById('pdImg');
+  pdImgEl.style.background = p.color;
+  pdImgEl.innerHTML = productImgInner(p);
+  document.getElementById('pdCat').textContent = p.cat;
+  document.getElementById('pdName').textContent = p.name;
+  document.getElementById('pdPrice').textContent = '$'+p.price.toLocaleString();
+  document.getElementById('pdBrand').textContent = p.brand;
+  document.getElementById('pdMetal').textContent = p.metal;
+  document.getElementById('pdIntent').textContent = (JEWELRY_INTENTS.find(c=>c.key===p.intent)||{label:p.intent}).label;
+  document.getElementById('pdColor').textContent = p.colorName;
+  document.getElementById('pdDesc').textContent = p.desc;
+  document.getElementById('pdQty').textContent = 1;
+  document.getElementById('addedToast').style.display = 'none';
+  renderPdRating(p);
+  renderPdReviews(p);
+  renderPdWishlistBtn(p);
+  document.getElementById('similarGrid').innerHTML = PRODUCTS.filter(x=>x.intent===p.intent && x.id!==p.id).slice(0,4).map(productCard).join('');
+  trackView(p);
+  goPage('product');
+}
+function renderPdRating(p){
+  const r = productRatingSummary(p.id);
+  const el = document.getElementById('pdRating');
+  el.innerHTML = r.count>0
+    ? `<span class="stars">${starString(r.avg)}</span> <span>${r.avg} out of 5 (${r.count} review${r.count>1?'s':''})</span>`
+    : `<span>No reviews yet — be the first to review after purchase.</span>`;
+}
+function renderPdReviews(p){
+  const list = reviewsDb[p.id] || [];
+  const el = document.getElementById('pdReviews');
+  if(list.length===0){ el.innerHTML = '<p class="no-reviews">No reviews yet for this piece.</p>'; return; }
+  el.innerHTML = list.map(r=>`
+    <div class="review-card">
+      <div class="rc-head"><span>${r.author}</span><span class="rc-stars">${starString(r.rating)}</span></div>
+      <div class="rc-date">${new Date(r.date).toLocaleDateString()}</div>
+      <div class="rc-text">${r.text ? escapeHtml(r.text) : ''}</div>
+    </div>`).join('');
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function renderPdWishlistBtn(p){
+  const btn = document.getElementById('pdWishlistBtn');
+  const active = state.wishlist.includes(p.id);
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? '♥ In Wishlist' : '♡ Wishlist';
+}
+function changeQty(delta){
+  state.pdQty = Math.max(1, state.pdQty + delta);
+  document.getElementById('pdQty').textContent = state.pdQty;
+}
+function addToCart(){
+  const id = state.currentProductId;
+  const p = PRODUCTS.find(x=>x.id===id);
+  const existing = state.cart.find(c=>c.id===id);
+  if(existing) existing.qty += state.pdQty;
+  else state.cart.push({id, qty: state.pdQty});
+  logEvent('product_added_to_cart', p.name, {product_id:p.id, qty:state.pdQty, price:p.price, cart_size: state.cart.reduce((a,c)=>a+c.qty,0)});
+  renderCartCount();
+  const toast = document.getElementById('addedToast');
+  toast.style.display = 'block';
+}
+function quickAdd(id, ev){
+  ev.stopPropagation();
+  const p = PRODUCTS.find(x=>x.id===id);
+  const existing = state.cart.find(c=>c.id===id);
+  if(existing) existing.qty += 1;
+  else state.cart.push({id, qty:1});
+  logEvent('product_added_to_cart', p.name, {product_id:p.id, qty:1, price:p.price, cart_size: state.cart.reduce((a,c)=>a+c.qty,0)});
+  renderCartCount();
+  const btn = ev.currentTarget || ev.target;
+  if(btn){
+    const original = btn.textContent;
+    btn.textContent = 'Added ✓';
+    btn.classList.add('added');
+    btn.disabled = true;
+    setTimeout(()=>{ btn.textContent = original; btn.classList.remove('added'); btn.disabled = false; }, 1200);
+  }
+}
+function buyNow(){
+  addToCart();
+  goPage('cart');
+}
+function renderCartCount(){
+  const count = state.cart.reduce((a,c)=>a+c.qty,0);
+  const el = document.getElementById('cartCount');
+  if(count>0){ el.style.display='flex'; el.textContent = count; } else { el.style.display='none'; }
+}
+
+/* ===================== WISHLIST ===================== */
+function toggleWishlist(id, ev){
+  if(ev) ev.stopPropagation();
+  const p = PRODUCTS.find(x=>x.id===id);
+  const idx = state.wishlist.indexOf(id);
+  if(idx>-1){
+    state.wishlist.splice(idx,1);
+    logEvent('product_removed_from_wishlist', p.name, {product_id:id, category:p.cat, intent:p.intent, wishlist_size: state.wishlist.length});
+  } else {
+    state.wishlist.push(id);
+    logEvent('product_added_to_wishlist', p.name, {product_id:id, category:p.cat, intent:p.intent, price:p.price, wishlist_size: state.wishlist.length});
+  }
+  if(state.user){ sgIdentify(state.user.email, {wishlistSize: state.wishlist.length}); }
+  renderWishlistCount();
+  renderPLPGrid();
+  renderFeatured();
+  renderRecent();
+  renderRecommended();
+  document.getElementById('trendingGrid').innerHTML = PRODUCTS.slice(6,10).map(productCard).join('');
+  if(document.getElementById('page-wishlist').classList.contains('active')) renderWishlistPage();
+  if(document.getElementById('page-product').classList.contains('active') && state.currentProductId){
+    const cp = PRODUCTS.find(x=>x.id===state.currentProductId);
+    if(cp){
+      document.getElementById('similarGrid').innerHTML = PRODUCTS.filter(x=>x.intent===cp.intent && x.id!==cp.id).slice(0,4).map(productCard).join('');
+      if(cp.id===id) renderPdWishlistBtn(cp);
+    }
+  }
+}
+function toggleWishlistCurrent(){ toggleWishlist(state.currentProductId); }
+function renderWishlistCount(){
+  const el = document.getElementById('wishlistCount');
+  if(state.wishlist.length>0){ el.style.display='flex'; el.textContent = state.wishlist.length; } else { el.style.display='none'; }
+}
+function renderWishlistPage(){
+  const grid = document.getElementById('wishlistGrid');
+  const empty = document.getElementById('wishlistEmpty');
+  if(state.wishlist.length===0){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = state.wishlist.map(id=>productCard(PRODUCTS.find(p=>p.id===id))).join('');
+}
+
+/* ===================== SHOPPING INTENT BAR ===================== */
+function renderIntentBar(){
+  const bar = document.getElementById('intentBar');
+  const chips = JEWELRY_INTENTS.map(c=>{
+    const active = state.selectedIntent===c.key;
+    return `<button class="intent-chip ${active?'active':''}" onclick="selectIntent('${c.key}')">${c.label}</button>`;
+  }).join('');
+  bar.innerHTML = '<span style="font-size:13px; color:var(--text2); align-self:center; margin-right:6px;">Shopping for:</span>' + chips +
+    (state.selectedIntent ? `<button class="intent-chip" onclick="selectIntent(null)">Clear</button>` : '');
+}
+function selectIntent(key){
+  state.selectedIntent = key;
+  logEvent('shopping_intent_selected', key || 'cleared', {intent:key});
+  if(state.user){ sgIdentify(state.user.email, {shoppingIntent: key}); }
+  renderIntentBar();
+  renderRecommended();
+}
+
+/* ===================== SEARCH ===================== */
+function runSearch(){
+  const q = document.getElementById('searchInput').value.trim();
+  if(!q) return;
+  const ql = q.toLowerCase();
+  const results = PRODUCTS.filter(p =>
+    p.name.toLowerCase().includes(ql) ||
+    p.cat.toLowerCase().includes(ql) ||
+    p.intent.toLowerCase().includes(ql) ||
+    p.metal.toLowerCase().includes(ql) ||
+    p.brand.toLowerCase().includes(ql) ||
+    p.colorName.toLowerCase().includes(ql)
+  );
+  logEvent('product_searched', q, {query:q, results_count: results.length});
+  clearAllFilters(true);
+  document.getElementById('plpTitle').textContent = `Search results for "${q}"`;
+  document.getElementById('plpGrid').innerHTML = results.map(productCard).join('');
+  document.getElementById('plpEmpty').style.display = results.length===0 ? 'block' : 'none';
+  goPage('plp');
+}
+function resetSearch(){
+  document.getElementById('searchInput').value = '';
+  document.getElementById('plpTitle').textContent = 'Shop All';
+  clearAllFilters(true);
+  renderPLPGrid();
+}
+
+/* ===================== FILTERS ===================== */
+function renderFilterPanel(){
+  document.getElementById('filterCategory').innerHTML = CATEGORIES.map(c=>{
+    const checked = state.filters.category.has(c) ? 'checked' : '';
+    const label = c.charAt(0).toUpperCase()+c.slice(1);
+    return `<label class="filter-opt"><input type="checkbox" ${checked} onchange="toggleFilter('category','${c}')"> ${label}</label>`;
+  }).join('');
+  document.getElementById('filterMetal').innerHTML = METALS.map(s=>{
+    const checked = state.filters.metal.has(s) ? 'checked' : '';
+    return `<label class="filter-opt"><input type="checkbox" ${checked} onchange="toggleFilter('metal','${s}')"> ${s}</label>`;
+  }).join('');
+  document.getElementById('filterBrand').innerHTML = BRANDS.map(b=>{
+    const checked = state.filters.brand.has(b) ? 'checked' : '';
+    return `<label class="filter-opt"><input type="checkbox" ${checked} onchange="toggleFilter('brand','${b}')"> ${b}</label>`;
+  }).join('');
+  const colorHex = {};
+  PRODUCTS.forEach(p=>{ if(!colorHex[p.colorName]) colorHex[p.colorName]=p.color; });
+  document.getElementById('filterColor').innerHTML = COLOR_NAMES.map(cn=>{
+    const sel = state.filters.color.has(cn) ? 'selected' : '';
+    return `<div class="swatch ${sel}" style="background:${colorHex[cn]};" title="${cn}" onclick="toggleFilter('color','${cn}')"></div>`;
+  }).join('');
+  document.getElementById('filterPrice').value = state.filters.maxPrice;
+  document.getElementById('filterPriceLabel').textContent = state.filters.maxPrice>=7000 ? '$7,000+' : ('$'+state.filters.maxPrice.toLocaleString());
+}
+function toggleFilter(group, value){
+  const set = state.filters[group];
+  if(set.has(value)) set.delete(value); else set.add(value);
+  logEvent('filter_applied', group, {filterType:group, value, activeFilters: serializeActiveFilters()});
+  if(state.user){ sgIdentify(state.user.email, {lastFilterApplied: group+':'+value}); }
+  renderFilterPanel();
+  renderPLPGrid();
+}
+function onPriceFilterChange(){
+  state.filters.maxPrice = parseInt(document.getElementById('filterPrice').value,10);
+  document.getElementById('filterPriceLabel').textContent = state.filters.maxPrice>=7000 ? '$7,000+' : ('$'+state.filters.maxPrice.toLocaleString());
+  logEvent('filter_applied', 'price', {filterType:'price', maxPrice: state.filters.maxPrice, activeFilters: serializeActiveFilters()});
+  if(state.user){ sgIdentify(state.user.email, {lastFilterApplied: 'price:'+state.filters.maxPrice}); }
+  renderPLPGrid();
+}
+function serializeActiveFilters(){
+  return {
+    category:[...state.filters.category],
+    metal:[...state.filters.metal],
+    brand:[...state.filters.brand],
+    color:[...state.filters.color],
+    maxPrice: state.filters.maxPrice,
+  };
+}
+function clearAllFilters(skipRender){
+  state.filters = {category:new Set(), metal:new Set(), brand:new Set(), color:new Set(), maxPrice:7000};
+  logEvent('filters_cleared', 'Filters cleared', {});
+  if(!skipRender){ renderFilterPanel(); renderPLPGrid(); }
+}
+function applyFilters(list){
+  const f = state.filters;
+  return list.filter(p=>{
+    if(f.category.size>0 && !f.category.has(p.category)) return false;
+    if(f.metal.size>0 && !f.metal.has(p.metal)) return false;
+    if(f.brand.size>0 && !f.brand.has(p.brand)) return false;
+    if(f.color.size>0 && !f.color.has(p.colorName)) return false;
+    if(p.price > f.maxPrice && f.maxPrice<7000) return false;
+    return true;
+  });
+}
+function renderActiveChips(){
+  const chips = [];
+  state.filters.category.forEach(v=>chips.push(['category',v]));
+  state.filters.metal.forEach(v=>chips.push(['metal',v]));
+  state.filters.brand.forEach(v=>chips.push(['brand',v]));
+  state.filters.color.forEach(v=>chips.push(['color',v]));
+  if(state.filters.maxPrice<7000) chips.push(['maxPrice','Up to $'+state.filters.maxPrice.toLocaleString()]);
+  const el = document.getElementById('activeFilterChips');
+  if(chips.length===0){ el.innerHTML=''; return; }
+  el.innerHTML = chips.map(([k,v])=>`<span class="fchip">${v}<span onclick="removeChip('${k}','${v}')">×</span></span>`).join('');
+}
+function removeChip(key, value){
+  if(key==='maxPrice'){ state.filters.maxPrice = 7000; }
+  else { state.filters[key].delete(value); }
+  renderFilterPanel();
+  renderPLPGrid();
+}
+function renderPLPGrid(){
+  const isSearch = document.getElementById('plpTitle').textContent.indexOf('Search results') !== -1;
+  let list = applyFilters(PRODUCTS);
+  if(isSearch){
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    if(q){
+      list = list.filter(p => p.name.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q) || p.intent.toLowerCase().includes(q) || p.metal.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.colorName.toLowerCase().includes(q));
+    }
+  }
+  document.getElementById('plpGrid').innerHTML = list.map(productCard).join('');
+  document.getElementById('plpEmpty').style.display = list.length===0 ? 'block' : 'none';
+  renderActiveChips();
+}
+
+/* ===================== CART PAGE ===================== */
+function renderCart(){
+  const wrap = document.getElementById('cartItems');
+  const empty = document.getElementById('cartEmpty');
+  const summaryBox = document.getElementById('cartSummaryBox');
+  if(state.cart.length===0){
+    wrap.innerHTML=''; empty.style.display='block'; summaryBox.style.display='none';
+    return;
+  }
+  empty.style.display='none'; summaryBox.style.display='block';
+  wrap.innerHTML = state.cart.map(c=>{
+    const p = PRODUCTS.find(x=>x.id===c.id);
+    return `<div class="cart-item">
+      <div class="cart-thumb" style="background:${p.color};">${productImgInner(p)}</div>
+      <div class="ci-info">
+        <div class="ci-name">${p.name}</div>
+        <div class="ci-cat">${p.cat} · $${p.price.toLocaleString()} each</div>
+      </div>
+      <div class="qty-box">
+        <button onclick="updateCartQty('${c.id}', -1)">−</button>
+        <span>${c.qty}</span>
+        <button onclick="updateCartQty('${c.id}', 1)">+</button>
+      </div>
+      <div style="width:90px; text-align:right; font-weight:600;">$${(p.price*c.qty).toLocaleString()}</div>
+      <span class="remove-link" onclick="removeFromCart('${c.id}')">Remove</span>
+    </div>`;
+  }).join('');
+  const subtotal = state.cart.reduce((a,c)=>a + PRODUCTS.find(p=>p.id===c.id).price*c.qty, 0);
+  const shipping = subtotal > 0 ? (subtotal > 1000 ? 0 : 25) : 0;
+  document.getElementById('cartSubtotal').textContent = '$'+subtotal.toLocaleString();
+  document.getElementById('cartShipping').textContent = shipping===0 ? 'Free (insured)' : '$'+shipping.toLocaleString();
+  document.getElementById('cartTotal').textContent = '$'+(subtotal+shipping).toLocaleString();
+}
+function updateCartQty(id, delta){
+  const item = state.cart.find(c=>c.id===id);
+  item.qty += delta;
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(item.qty<=0){
+    state.cart = state.cart.filter(c=>c.id!==id);
+    logEvent('product_removed_from_cart', p.name, {product_id:id});
+  } else {
+    logEvent('cart_quantity_updated', p.name, {product_id:id, qty:item.qty});
+  }
+  renderCart(); renderCartCount();
+}
+function removeFromCart(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  state.cart = state.cart.filter(c=>c.id!==id);
+  logEvent('product_removed_from_cart', p.name, {product_id:id});
+  renderCart(); renderCartCount();
+}
+
+let checkoutDraft = {};
+function goToCheckout(){
+  if(state.cart.length===0) return;
+  if(!state.user){ alert('Please log in to complete checkout.'); goPage('login'); return; }
+  logEvent('checkout_started', 'Checkout started', {cart_size: state.cart.reduce((a,c)=>a+c.qty,0)});
+  const u = state.user;
+  checkoutDraft = {
+    name: u.name||'', phone: u.phone||'', address: u.address||'', city: u.city||'',
+    stateField: u.stateField||'', zip: u.zip||'', country: u.country||'', paymentMethod: null,
+  };
+  document.getElementById('coName').value = checkoutDraft.name;
+  document.getElementById('coPhone').value = checkoutDraft.phone;
+  document.getElementById('coAddress').value = checkoutDraft.address;
+  document.getElementById('coCity').value = checkoutDraft.city;
+  document.getElementById('coState').value = checkoutDraft.stateField;
+  document.getElementById('coZip').value = checkoutDraft.zip;
+  document.getElementById('coCountry').value = checkoutDraft.country;
+  document.getElementById('checkoutAddressCard').style.display='block';
+  document.getElementById('checkoutPaymentCard').style.display='none';
+  document.querySelectorAll('input[name=paymentMethod]').forEach(r=>r.checked=false);
+  document.getElementById('checkoutAddrError').style.display='none';
+  document.getElementById('checkoutPayError').style.display='none';
+  renderCheckoutSummary();
+  goPage('checkout');
+}
+function renderCheckoutSummary(){
+  const list = document.getElementById('checkoutItemsList');
+  list.innerHTML = state.cart.map(c=>{
+    const p = PRODUCTS.find(x=>x.id===c.id);
+    return `<div class="oc-item"><span>${p.name} × ${c.qty}</span><span>$${(p.price*c.qty).toLocaleString()}</span></div>`;
+  }).join('');
+  const subtotal = state.cart.reduce((a,c)=>a + PRODUCTS.find(p=>p.id===c.id).price*c.qty, 0);
+  const shipping = subtotal > 0 ? (subtotal > 1000 ? 0 : 25) : 0;
+  document.getElementById('coSubtotal').textContent = '$'+subtotal.toLocaleString();
+  document.getElementById('coShipping').textContent = shipping===0 ? 'Free (insured)' : '$'+shipping.toLocaleString();
+  document.getElementById('coTotal').textContent = '$'+(subtotal+shipping).toLocaleString();
+}
+function confirmCheckoutAddress(){
+  const name = document.getElementById('coName').value.trim();
+  const phone = document.getElementById('coPhone').value.trim();
+  const address = document.getElementById('coAddress').value.trim();
+  const city = document.getElementById('coCity').value.trim();
+  const stateField = document.getElementById('coState').value.trim();
+  const zip = document.getElementById('coZip').value.trim();
+  const country = document.getElementById('coCountry').value.trim();
+  const err = document.getElementById('checkoutAddrError');
+  if(!name || !phone || !address || !city || !zip || !country){
+    err.textContent = 'Please fill in your name, mobile number, and full address before continuing.';
+    err.style.display='block';
+    return;
+  }
+  err.style.display='none';
+  checkoutDraft = {name, phone, address, city, stateField, zip, country, paymentMethod:null};
+  state.user.name = name; state.user.phone = phone; state.user.address = address;
+  state.user.city = city; state.user.stateField = stateField; state.user.zip = zip; state.user.country = country;
+  state.usersDb[state.user.email.toLowerCase()] = Object.assign({}, state.user);
+  logEvent('checkout_address_confirmed', 'Delivery address & mobile number confirmed', {city, country});
+  if(state.user){ sgIdentify(state.user.email, {phone, address, city, country}); }
+  document.getElementById('checkoutAddressCard').style.display='none';
+  document.getElementById('checkoutPaymentCard').style.display='block';
+}
+function backToAddressStep(){
+  document.getElementById('checkoutAddressCard').style.display='block';
+  document.getElementById('checkoutPaymentCard').style.display='none';
+}
+function selectPaymentMethod(method){
+  checkoutDraft.paymentMethod = method;
+  document.getElementById('checkoutPayError').style.display='none';
+  logEvent('payment_method_selected', method, {method});
+}
+function placeOrder(){
+  const err = document.getElementById('checkoutPayError');
+  if(!checkoutDraft.paymentMethod){
+    err.textContent = 'Please select a payment method to continue.';
+    err.style.display='block';
+    return;
+  }
+  const subtotal = state.cart.reduce((a,c)=>a + PRODUCTS.find(p=>p.id===c.id).price*c.qty, 0);
+  const order = {
+    id:'ORD'+Math.floor(Math.random()*90000+10000),
+    items: state.cart.map(c=>({id:c.id, qty:c.qty})),
+    total: subtotal, date: new Date(), reviewed:{},
+    paymentMethod: checkoutDraft.paymentMethod,
+    shippingAddress: {name:checkoutDraft.name, phone:checkoutDraft.phone, address:checkoutDraft.address, city:checkoutDraft.city, stateField:checkoutDraft.stateField, zip:checkoutDraft.zip, country:checkoutDraft.country},
+  };
+  const key = state.user.email.toLowerCase();
+  state.ordersByUser[key] = state.ordersByUser[key] || [];
+  state.ordersByUser[key].unshift(order);
+  state.orders = state.ordersByUser[key];
+  logEvent('checkout_completed', 'Order placed', {order_id:order.id, total:order.total, items:order.items.length, paymentMethod: order.paymentMethod});
+  logEvent('purchase_completed', 'Purchase completed', {order_id:order.id, total:order.total, items:order.items.length, currency: state.user.currency||'USD', paymentMethod: order.paymentMethod});
+  state.cart = [];
+  state.lastOrder = order;
+  renderCartCount();
+  renderOrderHistory();
+  renderOrderConfirmation(order);
+  goPage('orderconfirm');
+}
+function renderOrderConfirmation(order){
+  const el = document.getElementById('confirmCard');
+  if(!el) return;
+  const itemsHtml = order.items.map(it=>{
+    const p = PRODUCTS.find(x=>x.id===it.id);
+    return `<div class="oc-item"><span>${p.name} × ${it.qty}</span><span>$${(p.price*it.qty).toLocaleString()}</span></div>`;
+  }).join('');
+  el.innerHTML = `<div class="oc-head"><span class="oc-id">${order.id}</span><span class="oc-date">${order.date.toLocaleDateString()}</span></div>
+    ${itemsHtml}
+    <div class="oc-item"><span>Payment Method</span><span>${order.paymentMethod||'—'}</span></div>
+    <div class="oc-total"><span>Total</span><span>$${order.total.toLocaleString()}</span></div>`;
+}
+
+/* ===================== AUTH ===================== */
+function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value.trim();
+  const err = document.getElementById('loginError');
+  if(!email || !pass){ err.textContent = 'Please enter your email and password.'; err.style.display='block'; return; }
+  err.style.display='none';
+  const key = email.toLowerCase();
+  if(!state.usersDb[key]){ err.textContent='Invalid email or password.'; err.style.display='block'; return; }
+
+  state.cart = [];
+  state.wishlist = [];
+  renderCartCount();
+  renderWishlistCount();
+
+  state.recentlyViewed = [];
+  state.views = {bridal:0, everyday:0, gifting:0, luxury:0};
+  state.currentSegment = null;
+  state.currentIntent = null;
+  state.confidence = 0;
+  renderRecent();
+
+  state.user = Object.assign({}, state.usersDb[key]);
+  state.orders = state.ordersByUser[key] || [];
+  renderProductGrids();
+  logEvent('login_completed', 'Customer logged in', {email, method:'email'});
+  logEvent('identity_resolved', 'Anonymous session merged with known profile', {email, sessionId: state.sessionId});
+  logEvent('customer_profile_unified', 'Unified Customer Profile created', {email});
+  sgIdentify(email, {
+    name: state.user.name,
+    email: state.user.email,
+    metalPreference: state.user.metal,
+    currency: state.user.currency,
+    loginMethod: 'email',
+  });
+  clearAuthForms();
+  afterAuth();
+}
+function doSignup(){
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass = document.getElementById('signupPassword').value.trim();
+  const err = document.getElementById('signupError');
+  if(!name || !email || !pass){ err.textContent = 'Please fill in all fields.'; err.style.display='block'; return; }
+  err.style.display='none';
+  logEvent('signup_started', 'Signup flow started', {email});
+
+  state.cart = [];
+  state.wishlist = [];
+  renderCartCount();
+  renderWishlistCount();
+
+  state.recentlyViewed = [];
+  state.views = {bridal:0, everyday:0, gifting:0, luxury:0};
+  state.currentSegment = null;
+  state.currentIntent = null;
+  state.confidence = 0;
+  renderRecent();
+
+  const key = email.toLowerCase();
+  state.user = {name, email, phone:'', address:'', city:'', stateField:'', zip:'', country:'', dob:'', metal:'18K Gold', currency:'USD', profileCompleted:false};
+  state.usersDb[key] = Object.assign({}, state.user);
+  state.ordersByUser[key] = state.ordersByUser[key] || [];
+  state.orders = state.ordersByUser[key];
+  renderProductGrids();
+  logEvent('signup_completed', 'Account created', {name, email});
+  logEvent('identity_resolved', 'Anonymous session merged with known profile', {email, sessionId: state.sessionId});
+  logEvent('customer_profile_unified', 'Unified Customer Profile created', {email});
+  sgIdentify(email, {
+    name: state.user.name,
+    email: state.user.email,
+    metalPreference: state.user.metal,
+    currency: state.user.currency,
+    signupDate: new Date().toISOString(),
+  });
+  clearAuthForms();
+  afterAuth();
+}
+function clearAuthForms(){
+  ['loginEmail','loginPassword','signupName','signupEmail','signupPassword'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const le = document.getElementById('loginError'); if(le){ le.style.display='none'; le.textContent=''; }
+  const se = document.getElementById('signupError'); if(se){ se.style.display='none'; se.textContent=''; }
+}
+function afterAuth(){
+  renderHeaderAuth();
+  if(!state.user.profileCompleted){
+    loadProfileForm();
+    goPage('profile');
+  } else {
+    goPage('home');
+  }
+}
+function signOut(){
+  const email = state.user ? state.user.email : null;
+  logEvent('signout_completed', 'User signed out', {email});
+  const a = sg();
+  if(a && a.reset){ try{ a.reset(); }catch(e){ console.warn('analytics.reset failed', e); } }
+  state.user = null;
+  state.orders = [];
+
+  state.cart = [];
+  state.wishlist = [];
+  renderCartCount();
+  renderWishlistCount();
+
+  state.recentlyViewed = [];
+  state.views = {bridal:0, everyday:0, gifting:0, luxury:0};
+  state.currentSegment = null;
+  state.currentIntent = null;
+  state.confidence = 0;
+
+  renderProductGrids();
+  resetSearch();
+
+  clearAuthForms();
+  renderHeaderAuth();
+  goPage('home');
+}
+function renderHeaderAuth(){
+  const greet = document.getElementById('greetText');
+  const loginBtn = document.getElementById('loginBtn');
+  const signoutBtn = document.getElementById('signoutBtn');
+  if(state.user){
+    greet.style.display='inline'; greet.innerHTML = 'Hi, <b>'+state.user.name+'</b>';
+    loginBtn.style.display='none'; signoutBtn.style.display='inline-block';
+  } else {
+    greet.style.display='none';
+    loginBtn.style.display='inline-block'; signoutBtn.style.display='none';
+  }
+}
+
+/* ===================== PROFILE ===================== */
+function loadProfileForm(){
+  const loggedOut = document.getElementById('profileLoggedOut');
+  const loggedIn = document.getElementById('profileLoggedIn');
+  if(!state.user){ loggedOut.style.display='block'; loggedIn.style.display='none'; return; }
+  loggedOut.style.display='none'; loggedIn.style.display='block';
+  const u = state.user;
+  document.getElementById('avatarInitial').textContent = u.name.charAt(0).toUpperCase();
+  document.getElementById('profileNameDisplay').textContent = u.name;
+  document.getElementById('profileEmailDisplay').textContent = u.email;
+  document.getElementById('profilePhoneDisplay').textContent = u.phone || 'No phone on file';
+  document.getElementById('pfName').value = u.name;
+  document.getElementById('pfEmail').value = u.email;
+  document.getElementById('pfPhone').value = u.phone;
+  document.getElementById('pfDob').value = u.dob;
+  document.getElementById('pfAddress').value = u.address;
+  document.getElementById('pfCity').value = u.city;
+  document.getElementById('pfState').value = u.stateField;
+  document.getElementById('pfZip').value = u.zip;
+  document.getElementById('pfCountry').value = u.country;
+  document.getElementById('pfMetal').value = u.metal;
+  document.getElementById('pfCurrency').value = u.currency;
+  renderOrderHistory();
+}
+function saveProfile(){
+  if(!state.user) return;
+  const oldKey = state.user.email.toLowerCase();
+  state.user.name = document.getElementById('pfName').value.trim() || state.user.name;
+  state.user.email = document.getElementById('pfEmail').value.trim() || state.user.email;
+  state.user.phone = document.getElementById('pfPhone').value.trim();
+  state.user.dob = document.getElementById('pfDob').value;
+  state.user.address = document.getElementById('pfAddress').value.trim();
+  state.user.city = document.getElementById('pfCity').value.trim();
+  state.user.stateField = document.getElementById('pfState').value.trim();
+  state.user.zip = document.getElementById('pfZip').value.trim();
+  state.user.country = document.getElementById('pfCountry').value.trim();
+  state.user.metal = document.getElementById('pfMetal').value;
+  state.user.currency = document.getElementById('pfCurrency').value;
+  state.user.profileCompleted = true;
+  const newKey = state.user.email.toLowerCase();
+  if(newKey !== oldKey){
+    state.ordersByUser[newKey] = state.ordersByUser[oldKey] || [];
+    delete state.ordersByUser[oldKey];
+    delete state.usersDb[oldKey];
+    state.orders = state.ordersByUser[newKey];
+  }
+  state.usersDb[newKey] = Object.assign({}, state.user);
+  renderHeaderAuth();
+  logEvent('profile_updated', 'Profile details saved', {email: state.user.email, metalPreference: state.user.metal, currency: state.user.currency});
+  sgIdentify(state.user.email, {
+    name: state.user.name,
+    email: state.user.email,
+    phone: state.user.phone,
+    metalPreference: state.user.metal,
+    currency: state.user.currency,
+    city: state.user.city,
+    country: state.user.country,
+  });
+  goPage('home');
+}
+function renderOrderHistory(){
+  const el = document.getElementById('orderHistory');
+  if(!el) return;
+  if(state.orders.length===0){ el.innerHTML = '<p style="font-size:13px; color:var(--text2);">No orders yet.</p>'; return; }
+  el.innerHTML = state.orders.map(o=>{
+    const itemsHtml = o.items.map(it=>{
+      const p = PRODUCTS.find(x=>x.id===it.id);
+      return `<div class="oc-item"><span>${p.name} × ${it.qty}</span><span>$${(p.price*it.qty).toLocaleString()}</span></div>`;
+    }).join('');
+    const reviewHtml = o.items.map(it=>{
+      const p = PRODUCTS.find(x=>x.id===it.id);
+      const done = o.reviewed && o.reviewed[it.id];
+      return `
+        <div class="rp-item">
+          <span>${p.name}</span>
+          ${done
+            ? `<span class="review-mini-btn done">Reviewed ✓</span>`
+            : `<span class="review-mini-btn" onclick="openReviewForm('${o.id}','${it.id}')">Rate &amp; Review</span>`}
+        </div>
+        <div class="review-form-box" id="reviewform-${o.id}-${it.id}">
+          <div style="font-size:12px; font-weight:600; margin-bottom:6px;">How satisfied were you with ${p.name}?</div>
+          <div class="star-input" id="starinput-${o.id}-${it.id}">
+            ${[1,2,3,4,5].map(n=>`<span onclick="setStarRating('${o.id}','${it.id}',${n})" data-n="${n}">★</span>`).join('')}
+          </div>
+          <textarea id="reviewtext-${o.id}-${it.id}" rows="2" placeholder="Tell other customers about your experience (optional)"></textarea>
+          <button class="pill-btn primary" style="margin-top:8px; padding:7px 14px; font-size:12px;" onclick="submitReview('${o.id}','${it.id}')">Submit Review</button>
+        </div>
+      `;
+    }).join('');
+    return `<div class="order-card">
+      <div class="oc-head"><span class="oc-id">${o.id}</span><span class="oc-date">${o.date.toLocaleDateString()}</span></div>
+      ${itemsHtml}
+      <div class="oc-total"><span>Total</span><span>$${o.total.toLocaleString()}</span></div>
+      <div class="review-prompt">
+        <div style="font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; margin-bottom:6px;">Rate Your Purchase</div>
+        ${reviewHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let pendingRatings = {};
+function openReviewForm(orderId, productId){
+  const box = document.getElementById(`reviewform-${orderId}-${productId}`);
+  if(box) box.style.display = box.style.display==='block' ? 'none' : 'block';
+}
+function setStarRating(orderId, productId, n){
+  pendingRatings[orderId+'-'+productId] = n;
+  const wrap = document.getElementById(`starinput-${orderId}-${productId}`);
+  if(!wrap) return;
+  wrap.querySelectorAll('span').forEach(s=>{
+    s.classList.toggle('filled', parseInt(s.dataset.n,10) <= n);
+  });
+}
+function submitReview(orderId, productId){
+  const rating = pendingRatings[orderId+'-'+productId];
+  if(!rating){ alert('Please select a star rating before submitting.'); return; }
+  const text = document.getElementById(`reviewtext-${orderId}-${productId}`).value.trim();
+  const order = state.orders.find(o=>o.id===orderId);
+  if(!order) return;
+  order.reviewed = order.reviewed || {};
+  order.reviewed[productId] = true;
+  const p = PRODUCTS.find(x=>x.id===productId);
+  const review = {rating, text, author: state.user ? state.user.name : 'Verified Buyer', date: new Date().toISOString()};
+  reviewsDb[productId] = reviewsDb[productId] || [];
+  reviewsDb[productId].push(review);
+  logEvent('product_review_submitted', p.name, {product_id:productId, order_id:orderId, rating, has_text: !!text});
+  if(state.user){ sgIdentify(state.user.email, {lastReviewedProduct: p.name, lastReviewRating: rating}); }
+  renderOrderHistory();
+  alert('Thank you for your review!');
+}
+
+/* ===================== PERSONALIZATION ===================== */
+function renderFeatured(){
+  const seg = state.currentSegment;
+  const grid = document.getElementById('featuredGrid');
+  const title = document.getElementById('featuredTitle');
+  const eyebrow = document.getElementById('heroEyebrow');
+  const headline = document.getElementById('heroHeadline');
+  const sub = document.getElementById('heroSub');
+  let key='general', variant='Default';
+
+  if(seg==='Bridal Intent Audience'){ key='bridal'; variant='Bridal Hero';
+    eyebrow.textContent='Curated For You'; headline.textContent='Your day, beautifully adorned.'; sub.textContent="Here's what brides-to-be are loving right now."; title.textContent='The Bridal Edit';
+  } else if(seg==='Everyday Fine Jewelry Shoppers'){ key='everyday'; variant='Everyday Hero';
+    eyebrow.textContent='Curated For You'; headline.textContent='Fine jewelry for every day.'; sub.textContent='Pieces built for daily rotation, not just special occasions.'; title.textContent='Everyday Essentials';
+  } else if(seg==='Gifting Shoppers'){ key='gifting'; variant='Gifting Hero';
+    eyebrow.textContent='Curated For You'; headline.textContent='Gifts that feel personal.'; sub.textContent='Thoughtful pieces for the people you love.'; title.textContent='The Gifting Edit';
+  } else if(seg==='Luxury Collectors'){ key='luxury'; variant='Luxury Hero';
+    eyebrow.textContent='Curated For You'; headline.textContent='Quietly luxurious, unmistakably fine.'; sub.textContent='Our most exceptional stones and settings.'; title.textContent='The Luxury Collection';
+  } else {
+    eyebrow.textContent='Personalized For You'; headline.textContent='Fine jewelry, understood in real time.'; sub.textContent='Aurelle curates pieces that fit how you actually shop.'; title.textContent='Featured For You';
+  }
+
+  const items = key==='general' ? PRODUCTS.slice(0,4) : PRODUCTS.filter(p=>p.intent===key).slice(0,4);
+  grid.innerHTML = items.map(productCard).join('');
+  state.homeVariant = variant;
+}
+
+/* ===================== SEGMENT / AUDIENCE LOGIC ===================== */
+function evaluateSegments(){
+  let best=null, bestCount=0;
+  Object.entries(state.views).forEach(([k,c])=>{ if(c>bestCount){bestCount=c; best=k;} });
+
+  if(best && bestCount>=3){
+    const segName = Object.keys(SEGMENT_DEFS).find(s=>SEGMENT_DEFS[s].key===best);
+    if(segName && segName!==state.currentSegment){
+      state.currentSegment = segName;
+      state.currentIntent = best;
+      state.confidence = Math.min(95, 55+bestCount*8);
+      logEvent('segment_assigned', segName, {segment:segName, intent:best, confidence:state.confidence});
+      logEvent('personalization_applied', state.homeVariant, {variant: state.homeVariant});
+      if(state.user){ sgIdentify(state.user.email, {segment: segName, primaryIntent: best, confidence: state.confidence}); }
+    } else if(segName){
+      state.confidence = Math.min(97, state.confidence+3);
+    }
+  }
+  renderFeatured();
+}
+
+/* ===================== SESSION HEARTBEAT ===================== */
+let sessionHeartbeatTimer = null;
+function startSessionHeartbeat(){
+  if(sessionHeartbeatTimer) return;
+  sessionHeartbeatTimer = setInterval(()=>{
+    if(document.visibilityState === 'visible'){
+      const durationMin = Math.round(((Date.now()-state.sessionStart)/60000)*10)/10;
+      sgTrack('session_heartbeat', {durationMin, sessionId: state.sessionId, page: currentPageName()});
+    }
+  }, 180000);
+}
+function currentPageName(){
+  const active = document.querySelector('.page.active');
+  return active ? active.id.replace('page-','') : 'unknown';
+}
+function endSession(reason){
+  const durationMin = Math.round(((Date.now()-state.sessionStart)/60000)*10)/10;
+  logEvent('user_exited', 'User exited the site', {durationMin, reason: reason||'unload'});
+}
+window.addEventListener('beforeunload', ()=>{ endSession('page_unload'); });
+startSessionHeartbeat();
+logEvent('user_entered', 'User entered the site', {sessionId: state.sessionId, referrer: document.referrer || 'direct'});
+
+/* ===================== NAV ===================== */
+function goPage(name){
+  const wasSearch = document.getElementById('plpTitle').textContent.indexOf('Search results') !== -1;
+  if(wasSearch && name !== 'plp'){
+    resetSearch();
+  }
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  const navEl = document.getElementById('nav-'+name);
+  if(navEl) navEl.classList.add('active');
+  if(name==='cart') renderCart();
+  if(name==='profile') loadProfileForm();
+  if(name==='wishlist') renderWishlistPage();
+  if(name==='plp' && document.getElementById('plpTitle').textContent.indexOf('Search results') === -1){
+    document.getElementById('plpTitle').textContent = 'Shop All';
+    renderPLPGrid();
+  }
+  sgPage(name, {sessionId: state.sessionId});
+  window.scrollTo(0,0);
+}
+
+/* ===================== INIT ===================== */
+renderIntentBar();
+renderFilterPanel();
+renderProductGrids();
+renderHeaderAuth();
+renderWishlistCount();
+</script>
+
+<!-- Segment Analytics -->
+<script>
+  /* ⚠ REPLACE THIS WITH YOUR REAL SEGMENT WEB SOURCE WRITE KEY BEFORE DEMOING ⚠
+     Segment → Connections → Sources → Add Source → JavaScript (Web) → name it "Aurelle Web" → copy the Write Key */
+  var SEGMENT_WRITE_KEY = "YOUR_SEGMENT_WRITE_KEY_HERE";
+
+  !function(){var i="analytics",analytics=window[i]=window[i]||[];if(!analytics.initialize)if(analytics.invoked)window.console&&console.error&&console.error("Segment snippet included twice.");else{analytics.invoked=!0;analytics.methods=["trackSubmit","trackClick","trackLink","trackForm","pageview","identify","reset","group","track","ready","alias","debug","page","screen","once","off","on","addSourceMiddleware","addIntegrationMiddleware","setAnonymousId","addDestinationMiddleware","register"];analytics.factory=function(e){return function(){if(window[i].initialized)return window[i][e].apply(window[i],arguments);var n=Array.prototype.slice.call(arguments);if(["track","screen","alias","group","page","identify"].indexOf(e)>-1){var c=document.querySelector("link[rel='canonical']");n.push({__t:"bpc",c:c&&c.getAttribute("href")||void 0,p:location.pathname,u:location.href,s:location.search,t:document.title,r:document.referrer})}n.unshift(e);analytics.push(n);return analytics}};for(var n=0;n<analytics.methods.length;n++){var key=analytics.methods[n];analytics[key]=analytics.factory(key)}analytics.load=function(key,n){var t=document.createElement("script");t.type="text/javascript";t.async=!0;t.setAttribute("data-global-segment-analytics-key",i);t.src="https://cdn.segment.com/analytics.js/v1/" + key + "/analytics.min.js";var r=document.getElementsByTagName("script")[0];r.parentNode.insertBefore(t,r);analytics._loadOptions=n};analytics._writeKey=SEGMENT_WRITE_KEY;;analytics.SNIPPET_VERSION="5.2.0";
+  analytics.load(SEGMENT_WRITE_KEY);
+  analytics.page();
+  }}();
+</script>
+
+</body>
+</html>
